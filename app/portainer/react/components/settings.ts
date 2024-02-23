@@ -2,6 +2,7 @@ import angular from 'angular';
 
 import { SettingsOpenAMT } from '@/react/portainer/settings/EdgeComputeView/SettingsOpenAMT';
 import { InternalAuth } from '@/react/portainer/settings/AuthenticationView/InternalAuth';
+import { AnonymousAuth } from '@/react/portainer/settings/AuthenticationView/AnonymousAuth';
 import { r2a } from '@/react-tools/react2angular';
 import { withReactQuery } from '@/react-tools/withReactQuery';
 import { withUIRouter } from '@/react-tools/withUIRouter';
@@ -23,6 +24,10 @@ export const settingsModule = angular
   )
   .component('ldapUsersDatatable', r2a(LDAPUsersTable, ['dataset']))
   .component('ldapGroupsDatatable', r2a(LDAPGroupsTable, ['dataset']))
+  .component(
+    'anonymousAuth',
+    r2a(AnonymousAuth, ['onSaveSettings', 'isLoading'])
+  )
   .component(
     'applicationSettingsPanel',
     r2a(withReactQuery(ApplicationSettingsPanel), ['onSuccess', 'settings'])

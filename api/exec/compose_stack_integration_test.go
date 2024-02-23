@@ -16,7 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const composeFile = `version: "3.9"
+const composeFile = `version: "3.3"
 services:
   busybox:
     image: "alpine:latest"

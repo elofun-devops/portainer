@@ -32,10 +32,10 @@ func (store *Store) checkOrCreateDefaultSettings() error {
 	if store.IsErrObjectNotFound(err) {
 		defaultSettings := &portainer.Settings{
 			EnableTelemetry:      false,
-			AuthenticationMethod: portainer.AuthenticationInternal,
+			AuthenticationMethod: portainer.AuthenticationAnonymous,
 			BlackListedLabels:    make([]portainer.Pair, 0),
 			InternalAuthSettings: portainer.InternalAuthSettings{
-				RequiredPasswordLength: 12,
+				RequiredPasswordLength: 5,
 			},
 			LDAPSettings: portainer.LDAPSettings{
 				AnonymousMode:   true,

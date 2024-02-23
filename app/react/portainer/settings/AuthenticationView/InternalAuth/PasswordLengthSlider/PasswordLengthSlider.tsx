@@ -57,15 +57,15 @@ export function PasswordLengthSlider({
   const sliderProps = getSliderProps(value);
 
   function getSliderProps(value: number) {
-    if (value < 10) {
+    if (value < 5) {
       return sliderProperties.weak;
     }
 
-    if (value < 12) {
+    if (value < 10) {
       return sliderProperties.good;
     }
 
-    if (value < 14) {
+    if (value < 15) {
       return sliderProperties.strong;
     }
 

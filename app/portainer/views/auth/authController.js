@@ -216,11 +216,15 @@ class AuthenticationController {
     }
   }
 
-  async authEnabledFlowAsync() {
+  async authEnabledFlowAsync(settings) {
     try {
       const exists = await this.UserService.administratorExists();
       if (!exists) {
         this.$state.go('portainer.init.admin');
+      } else {
+        if (settings.IsBypassLogin) {
+          await this.internalLoginAsync('admin', 'anonymous');
+        }
       }
     } catch (err) {
       this.error(err, 'Unable to verify administrator account existence');
@@ -270,7 +274,7 @@ class AuthenticationController {
       }
       this.state.loginInProgress = false;
 
-      await this.authEnabledFlowAsync();
+      await this.authEnabledFlowAsync(settings);
     } catch (err) {
       this.Notifications.error('Failure', err, 'Unable to retrieve public settings');
     }

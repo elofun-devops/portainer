@@ -7,12 +7,20 @@ import OAuth from '@/assets/ico/oauth.svg?c';
 
 export const options = [
   {
+    id: 'auth_anonymous',
+    icon: ArrowDownCircle,
+    iconType: 'badge',
+    label: 'Anonymous',
+    description: 'Anonymous authentication',
+    value: 1,
+  },
+  {
     id: 'auth_internal',
     icon: ArrowDownCircle,
     iconType: 'badge',
     label: 'Internal',
     description: 'Internal authentication mechanism',
-    value: 1,
+    value: 2,
   },
   {
     id: 'auth_ldap',
@@ -20,7 +28,7 @@ export const options = [
     label: 'LDAP',
     description: 'LDAP authentication',
     iconType: 'logo',
-    value: 2,
+    value: 3,
   },
   {
     id: 'auth_ad',
@@ -28,7 +36,7 @@ export const options = [
     label: 'Microsoft Active Directory',
     description: 'AD authentication',
     iconType: 'logo',
-    value: 4,
+    value: 5,
     feature: FeatureId.HIDE_INTERNAL_AUTH,
   },
   {
@@ -37,6 +45,6 @@ export const options = [
     label: 'OAuth',
     description: 'OAuth authentication',
     iconType: 'logo',
-    value: 3,
+    value: 4,
   },
 ];

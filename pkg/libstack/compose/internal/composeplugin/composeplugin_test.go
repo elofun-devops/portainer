@@ -62,13 +62,13 @@ func Test_NewCommand_MultiFilePaths_WithSpaces(t *testing.T) {
 func Test_UpAndDown(t *testing.T) {
 	checkPrerequisites(t)
 
-	const composeFileContent = `version: "3.9"
+	const composeFileContent = `version: "3.3"
 services:
   busybox:
     image: "alpine:3.7"
     container_name: "plugintest_container_one"`
 
-	const overrideComposeFileContent = `version: "3.9"
+	const overrideComposeFileContent = `version: "3.3"
 services:
   busybox:
     image: "alpine:latest"

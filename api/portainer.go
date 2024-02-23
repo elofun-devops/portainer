@@ -1625,6 +1625,8 @@ var SupportedFeatureFlags = []featureflags.Feature{}
 
 const (
 	_ AuthenticationMethod = iota
+	// AuthenticationInternal represents the guest authentication method
+	AuthenticationAnonymous
 	// AuthenticationInternal represents the internal authentication method (authentication against Portainer API)
 	AuthenticationInternal
 	// AuthenticationLDAP represents the LDAP authentication method (authentication against a LDAP server)

@@ -25,7 +25,7 @@ func Test_UpAndDown(t *testing.T) {
 	deployer, _ := compose.NewComposeDeployer("", "")
 
 	const composeFileContent = `
-    version: "3.9"
+    version: "3.3"
     services:
       busybox:
         image: "alpine:3.7"
@@ -33,7 +33,7 @@ func Test_UpAndDown(t *testing.T) {
     `
 
 	const overrideComposeFileContent = `
-    version: "3.9"
+    version: "3.3"
     services:
       busybox:
         image: "alpine:latest"

@@ -64,6 +64,14 @@ func (handler *Handler) authenticate(rw http.ResponseWriter, r *http.Request) *h
 		return httperror.InternalServerError("Unable to retrieve settings from the database", err)
 	}
 
+	if settings.AuthenticationMethod == portainer.AuthenticationAnonymous {
+		user, err := handler.DataStore.User().UserByUsername("admin")
+		if err != nil {
+			return httperror.InternalServerError("Unable find user admin", err)
+		}
+		return handler.writeToken(rw, user, false)
+	}
+
 	user, err := handler.DataStore.User().UserByUsername(payload.Username)
 	if err != nil {
 		if !handler.DataStore.IsErrObjectNotFound(err) {

@@ -21,8 +21,8 @@ angular.module('portainer.app').controller('InitAdminController', [
 
     $scope.formValues = {
       Username: 'admin',
-      Password: '',
-      ConfirmPassword: '',
+      Password: 'admin',
+      ConfirmPassword: 'admin',
       enableTelemetry: process.env.NODE_ENV === 'production',
       restoreFormType: $scope.RESTORE_FORM_TYPES.FILE,
     };

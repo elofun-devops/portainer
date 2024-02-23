@@ -33,8 +33,10 @@
 
           <box-selector radio-name="'authOptions'" value="authMethod" options="authOptions" on-change="(onChangeAuthMethod)"></box-selector>
 
+          <anonymous-auth ng-if="authenticationMethodSelected(1)" on-save-settings="(saveSettings)" is-loading="state.actionInProgress"></anonymous-auth>
+
           <internal-auth
-            ng-if="authenticationMethodSelected(1)"
+            ng-if="authenticationMethodSelected(2)"
             on-save-settings="(saveSettings)"
             is-loading="state.actionInProgress"
             value="settings.InternalAuthSettings"
@@ -42,7 +44,7 @@
           ></internal-auth>
 
           <ldap-settings
-            ng-if="authenticationMethodSelected(2)"
+            ng-if="authenticationMethodSelected(3)"
             settings="formValues.ldap.ldapSettings"
             tlsca-cert="formValues.TLSCACert"
             state="state"
@@ -53,7 +55,7 @@
           ></ldap-settings>
 
           <ad-settings
-            ng-if="authenticationMethodSelected(4)"
+            ng-if="authenticationMethodSelected(5)"
             settings="formValues.ldap.adSettings"
             tlsca-cert="formValues.TLSCACert"
             state="state"
@@ -64,7 +66,7 @@
           ></ad-settings>
 
           <oauth-settings
-            ng-if="authenticationMethodSelected(3)"
+            ng-if="authenticationMethodSelected(4)"
             settings="OAuthSettings"
             teams="teams"
             on-save-settings="(saveSettings)"

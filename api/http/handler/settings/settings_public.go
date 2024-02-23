@@ -36,6 +36,8 @@ type publicSettingsResponse struct {
 
 	// Whether AMT is enabled
 	IsAMTEnabled bool
+	// TODO: Bypass login
+	IsBypassLogin bool
 
 	Edge struct {
 		// The ping interval for edge agent - used in edge async mode [seconds]
@@ -82,6 +84,7 @@ func generatePublicSettings(appSettings *portainer.Settings) *publicSettingsResp
 		KubeconfigExpiry:          appSettings.KubeconfigExpiry,
 		Features:                  featureflags.FeatureFlags(),
 		IsAMTEnabled:              appSettings.EnableEdgeComputeFeatures && appSettings.OpenAMTConfiguration.Enabled,
+		IsBypassLogin:             appSettings.AuthenticationMethod == portainer.AuthenticationAnonymous,
 	}
 
 	publicSettings.Edge.PingInterval = appSettings.Edge.PingInterval
