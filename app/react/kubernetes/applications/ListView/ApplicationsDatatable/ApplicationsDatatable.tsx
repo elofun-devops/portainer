@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useMemo } from 'react';
 import { BoxIcon } from 'lucide-react';
+import { groupBy, partition } from 'lodash';
 
 import { useKubeStore } from '@/react/kubernetes/datatables/default-kube-datatable-store';
 import { DefaultDatatableSettings } from '@/react/kubernetes/datatables/DefaultDatatableSettings';
@@ -9,6 +10,8 @@ import { useNamespacesQuery } from '@/react/kubernetes/namespaces/queries/useNam
 import { useEnvironmentId } from '@/react/hooks/useEnvironmentId';
 import { useCurrentEnvironment } from '@/react/hooks/useCurrentEnvironment';
 import { useAuthorizations } from '@/react/hooks/useUser';
+import { isSystemNamespace } from '@/react/kubernetes/namespaces/queries/useIsSystemNamespace';
+import { KubernetesApplicationTypes } from '@/kubernetes/models/application/models/appConstants';
 
 import { TableSettingsMenu } from '@@/datatables';
 import { useRepeater } from '@@/datatables/useRepeater';
@@ -18,39 +21,33 @@ import { ExpandableDatatable } from '@@/datatables/ExpandableDatatable';
 
 import { NamespaceFilter } from '../ApplicationsStacksDatatable/NamespaceFilter';
 import { Namespace } from '../ApplicationsStacksDatatable/types';
+import { useApplications } from '../../application.queries';
+import { PodKubernetesInstanceLabel, PodManagedByLabel } from '../../constants';
 
-import { Application, ConfigKind } from './types';
+import { Application, ApplicationRowData, ConfigKind } from './types';
 import { useColumns } from './useColumns';
 import { getPublishedUrls } from './PublishedPorts';
 import { SubRow } from './SubRow';
 import { HelmInsightsBox } from './HelmInsightsBox';
 
 export function ApplicationsDatatable({
-  dataset,
   onRefresh,
-  isLoading,
   onRemove,
   namespace = '',
   namespaces,
   onNamespaceChange,
-  showSystem,
-  onShowSystemChange,
   hideStacks,
 }: {
-  dataset: Array<Application>;
   onRefresh: () => void;
-  isLoading: boolean;
   onRemove: (selectedItems: Application[]) => void;
   namespace?: string;
   namespaces: Array<Namespace>;
   onNamespaceChange(namespace: string): void;
-  showSystem?: boolean;
-  onShowSystemChange(showSystem: boolean): void;
   hideStacks: boolean;
 }) {
   const envId = useEnvironmentId();
   const envQuery = useCurrentEnvironment();
-  const namespaceMetaListQuery = useNamespacesQuery(envId);
+  const namespaceListQuery = useNamespacesQuery(envId);
 
   const tableState = useKubeStore('kubernetes.applications', 'Name');
   useRepeater(tableState.autoRefreshRate, onRefresh);
@@ -58,36 +55,36 @@ export function ApplicationsDatatable({
   const hasWriteAuthQuery = useAuthorizations(
     'K8sApplicationsW',
     undefined,
-    true
+    false
   );
-
-  const { setShowSystemResources } = tableState;
-
-  useEffect(() => {
-    setShowSystemResources(showSystem || false);
-  }, [showSystem, setShowSystemResources]);
+  const applicationsQuery = useApplications(envId, {
+    refetchInterval: tableState.autoRefreshRate * 1000,
+    namespace,
+    withDependencies: true,
+  });
+  const applications = useApplicationsRowData(applicationsQuery.data);
+  const filteredApplications = tableState.showSystemResources
+    ? applications
+    : applications.filter(
+        (application) =>
+          !isSystemNamespace(application.ResourcePool, namespaceListQuery.data)
+      );
 
   const columns = useColumns(hideStacks);
-
-  const filteredDataset = !showSystem
-    ? dataset.filter(
-        (item) => !namespaceMetaListQuery.data?.[item.ResourcePool]?.IsSystem
-      )
-    : dataset;
 
   return (
     <ExpandableDatatable
       data-cy="k8sApp-appTable"
       noWidget
-      dataset={filteredDataset}
+      dataset={filteredApplications ?? []}
       settingsManager={tableState}
       columns={columns}
       title="Applications"
       titleIcon={BoxIcon}
-      isLoading={isLoading}
+      isLoading={applicationsQuery.isLoading}
       disableSelect={!hasWriteAuthQuery.authorized}
       isRowSelectable={(row) =>
-        !namespaceMetaListQuery.data?.[row.original.ResourcePool]?.IsSystem
+        !isSystemNamespace(row.original.ResourcePool, namespaceListQuery.data)
       }
       getRowCanExpand={(row) => isExpandable(row.original)}
       renderSubRow={(row) => (
@@ -119,10 +116,7 @@ export function ApplicationsDatatable({
       }
       renderTableSettings={() => (
         <TableSettingsMenu>
-          <DefaultDatatableSettings
-            settings={tableState}
-            onShowSystemChange={onShowSystemChange}
-          />
+          <DefaultDatatableSettings settings={tableState} />
         </TableSettingsMenu>
       )}
       description={
@@ -151,7 +145,74 @@ export function ApplicationsDatatable({
   );
 }
 
-function isExpandable(item: Application) {
+function useApplicationsRowData(
+  applications?: Application[]
+): ApplicationRowData[] {
+  return useMemo(() => separateHelmApps(applications ?? []), [applications]);
+}
+
+function separateHelmApps(applications: Application[]): ApplicationRowData[] {
+  const [helmApps, nonHelmApps] = partition(
+    applications,
+    (app) =>
+      app.Metadata?.labels &&
+      app.Metadata.labels[PodKubernetesInstanceLabel] &&
+      app.Metadata.labels[PodManagedByLabel] === 'Helm'
+  );
+
+  const groupedHelmApps: Record<string, Application[]> = groupBy(
+    helmApps,
+    (app) => app.Metadata?.labels[PodKubernetesInstanceLabel] ?? ''
+  );
+
+  // build the helm apps row data from the grouped helm apps
+  const helmAppsRowData = Object.entries(groupedHelmApps).reduce<
+    ApplicationRowData[]
+  >((helmApps, [appName, apps]) => {
+    const helmApp = buildHelmAppRowData(appName, apps);
+    return [...helmApps, helmApp];
+  }, []);
+
+  return [...helmAppsRowData, ...nonHelmApps];
+}
+
+function buildHelmAppRowData(
+  appName: string,
+  apps: Application[]
+): ApplicationRowData {
+  const id = `${apps[0].ResourcePool}-${appName
+    .toLowerCase()
+    .replaceAll(' ', '-')}`;
+  const { earliestCreationDate, runningPods, totalPods } = apps.reduce(
+    (acc, app) => ({
+      earliestCreationDate:
+        new Date(app.CreationDate) < new Date(acc.earliestCreationDate)
+          ? app.CreationDate
+          : acc.earliestCreationDate,
+      runningPods: acc.runningPods + app.RunningPodsCount,
+      totalPods: acc.totalPods + app.TotalPodsCount,
+    }),
+    {
+      earliestCreationDate: apps[0].CreationDate,
+      runningPods: 0,
+      totalPods: 0,
+    }
+  );
+  const helmApp: ApplicationRowData = {
+    ...apps[0],
+    Name: appName,
+    Id: id,
+    KubernetesApplications: apps,
+    ApplicationType: KubernetesApplicationTypes.Helm,
+    Status: runningPods < totalPods ? 'Not ready' : 'Ready',
+    CreationDate: earliestCreationDate,
+    RunningPodsCount: runningPods,
+    TotalPodsCount: totalPods,
+  };
+  return helmApp;
+}
+
+function isExpandable(item: ApplicationRowData) {
   return (
     !!item.KubernetesApplications ||
     !!getPublishedUrls(item).length ||

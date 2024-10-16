@@ -1,5 +1,9 @@
 import { AppType, DeploymentType } from '../../types';
 
+export interface ApplicationRowData extends Application {
+  KubernetesApplications?: Array<Application>;
+}
+
 export interface Application {
   Id: string;
   Name: string;
@@ -11,7 +15,6 @@ export interface Application {
   StackName?: string;
   ResourcePool: string;
   ApplicationType: AppType;
-  KubernetesApplications?: Array<Application>;
   Metadata?: {
     labels: Record<string, string>;
   };
@@ -39,6 +42,12 @@ export interface Application {
     }>;
     Port: number;
   }>;
+  Resource?: {
+    CpuLimit?: number;
+    CpuRequest?: number;
+    MemoryLimit?: number;
+    MemoryRequest?: number;
+  };
 }
 
 export enum ConfigKind {

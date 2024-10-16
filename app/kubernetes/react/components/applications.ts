@@ -11,14 +11,10 @@ export const applicationsModule = angular
   .component(
     'kubernetesApplicationsDatatable',
     r2a(withUIRouter(withCurrentUser(ApplicationsDatatable)), [
-      'dataset',
-      'isLoading',
       'namespace',
       'namespaces',
       'onNamespaceChange',
       'onRefresh',
-      'showSystem',
-      'onShowSystemChange',
       'onRemove',
       'hideStacks',
     ])

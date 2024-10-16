@@ -1,68 +1,71 @@
 import { List } from 'lucide-react';
-import { useEffect } from 'react';
 
 import { useAuthorizations } from '@/react/hooks/useUser';
 import { SystemResourceDescription } from '@/react/kubernetes/datatables/SystemResourceDescription';
 import { createStore } from '@/react/kubernetes/datatables/default-kube-datatable-store';
+import { useEnvironmentId } from '@/react/hooks/useEnvironmentId';
+import { isSystemNamespace } from '@/react/kubernetes/namespaces/queries/useIsSystemNamespace';
+import { useNamespacesQuery } from '@/react/kubernetes/namespaces/queries/useNamespacesQuery';
+import { DefaultDatatableSettings } from '@/react/kubernetes/datatables/DefaultDatatableSettings';
 
 import { ExpandableDatatable } from '@@/datatables/ExpandableDatatable';
-import { useRepeater } from '@@/datatables/useRepeater';
 import { useTableState } from '@@/datatables/useTableState';
+import { TableSettingsMenu } from '@@/datatables';
 
-import { KubernetesStack } from '../../types';
+import { useApplications } from '../../application.queries';
 
 import { columns } from './columns';
 import { SubRows } from './SubRows';
-import { Namespace } from './types';
-import { StacksSettingsMenu } from './StacksSettingsMenu';
+import { Namespace, Stack } from './types';
 import { NamespaceFilter } from './NamespaceFilter';
 import { TableActions } from './TableActions';
+import { getStacksFromApplications } from './getStacksFromApplications';
 
 const storageKey = 'kubernetes.applications.stacks';
 
 const settingsStore = createStore(storageKey);
 
 interface Props {
-  dataset: Array<KubernetesStack>;
-  onRemove(selectedItems: Array<KubernetesStack>): void;
-  onRefresh(): Promise<void>;
+  onRemove(selectedItems: Array<Stack>): void;
   namespace?: string;
   namespaces: Array<Namespace>;
   onNamespaceChange(namespace: string): void;
-  isLoading?: boolean;
-  showSystem?: boolean;
-  setSystemResources(showSystem: boolean): void;
 }
 
 export function ApplicationsStacksDatatable({
-  dataset,
   onRemove,
-  onRefresh,
   namespace = '',
   namespaces,
   onNamespaceChange,
-  isLoading,
-  showSystem,
-  setSystemResources,
 }: Props) {
   const tableState = useTableState(settingsStore, storageKey);
 
-  const { setShowSystemResources } = tableState;
-
-  useEffect(() => {
-    setShowSystemResources(showSystem || false);
-  }, [showSystem, setShowSystemResources]);
+  const envId = useEnvironmentId();
+  const applicationsQuery = useApplications(envId, {
+    refetchInterval: tableState.autoRefreshRate * 1000,
+    namespace,
+    withDependencies: true,
+  });
+  const namespaceListQuery = useNamespacesQuery(envId);
+  const applications = applicationsQuery.data ?? [];
+  const filteredApplications = tableState.showSystemResources
+    ? applications
+    : applications.filter(
+        (item) =>
+          !isSystemNamespace(item.ResourcePool, namespaceListQuery.data ?? [])
+      );
 
   const { authorized } = useAuthorizations('K8sApplicationsW');
-  useRepeater(tableState.autoRefreshRate, onRefresh);
+
+  const stacks = getStacksFromApplications(filteredApplications);
 
   return (
     <ExpandableDatatable
       getRowCanExpand={(row) => row.original.Applications.length > 0}
       title="Stacks"
       titleIcon={List}
-      dataset={dataset}
-      isLoading={isLoading}
+      dataset={stacks}
+      isLoading={applicationsQuery.isLoading || namespaceListQuery.isLoading}
       columns={columns}
       settingsManager={tableState}
       disableSelect={!authorized}
@@ -77,12 +80,14 @@ export function ApplicationsStacksDatatable({
               namespaces={namespaces}
               value={namespace}
               onChange={onNamespaceChange}
-              showSystem={showSystem}
+              showSystem={tableState.showSystemResources}
             />
           </div>
 
           <div className="space-y-2">
-            <SystemResourceDescription showSystemResources={showSystem} />
+            <SystemResourceDescription
+              showSystemResources={tableState.showSystemResources}
+            />
           </div>
         </div>
       }
@@ -90,10 +95,9 @@ export function ApplicationsStacksDatatable({
         <TableActions selectedItems={selectedItems} onRemove={onRemove} />
       )}
       renderTableSettings={() => (
-        <StacksSettingsMenu
-          setSystemResources={setSystemResources}
-          settings={tableState}
-        />
+        <TableSettingsMenu>
+          <DefaultDatatableSettings settings={tableState} />
+        </TableSettingsMenu>
       )}
       getRowId={(row) => `${row.Name}-${row.ResourcePool}`}
       data-cy="applications-stacks-datatable"

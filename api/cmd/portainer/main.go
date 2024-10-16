@@ -31,7 +31,6 @@ import (
 	"github.com/portainer/portainer/api/http/proxy"
 	kubeproxy "github.com/portainer/portainer/api/http/proxy/factory/kubernetes"
 	"github.com/portainer/portainer/api/internal/authorization"
-	"github.com/portainer/portainer/api/internal/edge"
 	"github.com/portainer/portainer/api/internal/edge/edgestacks"
 	"github.com/portainer/portainer/api/internal/endpointutils"
 	"github.com/portainer/portainer/api/internal/snapshot"
@@ -45,6 +44,7 @@ import (
 	"github.com/portainer/portainer/api/pendingactions"
 	"github.com/portainer/portainer/api/pendingactions/actions"
 	"github.com/portainer/portainer/api/pendingactions/handlers"
+	"github.com/portainer/portainer/api/platform"
 	"github.com/portainer/portainer/api/scheduler"
 	"github.com/portainer/portainer/api/stacks/deployments"
 	"github.com/portainer/portainer/pkg/featureflags"
@@ -466,10 +466,6 @@ func buildServer(flags *portainer.CLIFlags) portainer.Server {
 		log.Fatal().Err(err).Msg("failed initializing helm package manager")
 	}
 
-	if err := edge.LoadEdgeJobs(dataStore, reverseTunnelService); err != nil {
-		log.Fatal().Err(err).Msg("failed loading edge jobs from database")
-	}
-
 	applicationStatus := initStatus(instanceID)
 
 	// channel to control when the admin user is created
@@ -532,7 +528,20 @@ func buildServer(flags *portainer.CLIFlags) portainer.Server {
 		log.Fatal().Msg("failed to fetch SSL settings from DB")
 	}
 
-	upgradeService, err := upgrade.NewService(*flags.Assets, composeDeployer, kubernetesClientFactory)
+	platformService, err := platform.NewService(dataStore)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed initializing platform service")
+	}
+
+	upgradeService, err := upgrade.NewService(
+		*flags.Assets,
+		kubernetesClientFactory,
+		dockerClientFactory,
+		composeStackManager,
+		dataStore,
+		fileService,
+		stackDeployer,
+	)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed initializing upgrade service")
 	}
@@ -589,6 +598,7 @@ func buildServer(flags *portainer.CLIFlags) portainer.Server {
 		UpgradeService:              upgradeService,
 		AdminCreationDone:           adminCreationDone,
 		PendingActionsService:       pendingActionsService,
+		PlatformService:             platformService,
 	}
 }
 

@@ -1,7 +1,6 @@
 package security
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -381,7 +380,9 @@ func (bouncer *RequestBouncer) RevokeJWT(token string) {
 
 func (bouncer *RequestBouncer) cleanUpExpiredJWTPass() {
 	bouncer.revokedJWT.Range(func(key, value any) bool {
-		if time.Now().After(value.(time.Time)) {
+		if t := value.(time.Time); t.IsZero() {
+			return true
+		} else if time.Now().After(t) {
 			bouncer.revokedJWT.Delete(key)
 		}
 
@@ -424,7 +425,7 @@ func (bouncer *RequestBouncer) apiKeyLookup(r *http.Request) (*portainer.TokenDa
 	}
 	if _, _, err := bouncer.jwtService.GenerateToken(tokenData); err != nil {
 		log.Debug().Err(err).Msg("Failed to generate token")
-		return nil, fmt.Errorf("failed to generate token")
+		return nil, errors.New("failed to generate token")
 	}
 
 	if now := time.Now().UTC().Unix(); now-apiKey.LastUsed > 60 { // [seconds]
